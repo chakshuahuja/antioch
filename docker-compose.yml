@@ -1,0 +1,13 @@
+version: '2'
+
+services:
+  antioch:
+    build: .
+    container_name: antioch
+    volumes:
+      - .:/app
+
+    antioch-uploader:
+      extends:
+        service: antioch
+      command: python -m antioch.uploader
