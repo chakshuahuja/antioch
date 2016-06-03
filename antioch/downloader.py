@@ -4,10 +4,11 @@ import uuid
 import logging
 import datetime
 import glob
-import requests
-
-from requests import exceptions as RequestErrors
 from concurrent.futures import ThreadPoolExecutor, as_completed
+
+import requests
+from requests import exceptions as RequestErrors
+from pytube import YouTube
 
 from antioch.core import config
 
@@ -24,9 +25,14 @@ logger.setLevel(logging.DEBUG)
 logger.propagate = False
 
 
+def gen_filename(path, extension='movie'):
+    return os.path.join(path, '%s.%s' % (uuid.uuid4().hex, extension))
+
+
 def find_files_by_extension(path, extension='json'):
     logger.info('find all json files at path: ' + path)
     return glob.glob(os.path.join(path, '**/**/*.{}'.format(extension)))
+
 
 def videos_by_container(path):
     all_files = find_files_by_extension(path)
@@ -63,22 +69,47 @@ def videos_by_container(path):
     return process_files
 
 
-def download_youtube(url, timeout, chunk_size=DEFAULT_CHUNKSIZE):
+def download_youtube(url, timeout, chunk_size=config.DEFAULT_CHUNKSIZE):
+    def _sort_by_quality(v_list):
+        # give better codecs a higher score than worse ones,
+        # so that in resolution ties, the better codec is picked.
+        boost = {
+            'webm': 1.2,
+            'mp4': 1.1,
+            'flv': 1.0,
+            '3gp': 0.7}
+        video_scores = dict()
+        for v in v_list:
+            score = int(v.resolution.strip('pP')) * boost.get(v.extension.lower(), 0.9) + int(v.audio_bitrate)
+            video_scores[score] = v
+        return video_scores
+
     try:
+        # get our Youtube Video instance given a url
         yt = YouTube(url)
+        # generate a new temp movie name, so we can set the download
+        # filename..and point the ``video.get(..)`` to the ``path`` portion.
+        fullpath = gen_filename(config.DROP_FOLDER_LOCATION, extension='movie')
+        path, name = os.path.split(fullpath)
+        yt.set_filename(name)
 
-        video_formats = yt.get_videos()
+        # no built in way to get BEST video option
+        video_formats = _sort_by_quality(yt.get_videos())
+        highest_quality = sorted(video_formats.items(), reverse=True)[0][1]  # [(score, Video<inst>), .., ..]
 
-        yt.set_filename(gen_filename(DROP_FOLDER_LOCATION))
-
-        print
+        # download that shit
+        video = yt.get(highest_quality.extension, highest_quality.resolution, profile=highest_quality.profile)
+        video.download(path, chunk_size=chunk_size)
 
     except Exception as e:
+        # something went wrong...
         logger.error(e)
         return None
 
     else:
-        pass
+        # if the new file path is there, then it completed successfully,
+        # otherwise return ``None`` to handle an error case given our JSON.
+        return True if os.path.exists(fullpath) else None
 
 
 def download_other(obj, timeout, chunk_size=config.DEFAULT_CHUNKSIZE):
@@ -96,7 +127,7 @@ def download_other(obj, timeout, chunk_size=config.DEFAULT_CHUNKSIZE):
         return None
 
     else:
-        filename = os.path.join(config.DROP_FOLDER_LOCATION, uuid.uuid4().hex + '.movie')
+        filename = gen_filename(config.DROP_FOLDER_LOCATION, extension='movie')
         with open(filename, 'wb') as out_file:
             for chunk in response.iter_content(chunk_size=chunk_size):
                 out_file.write(chunk)
