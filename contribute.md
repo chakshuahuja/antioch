@@ -18,3 +18,20 @@ git fetch upstream
 git checkout master
 git merge upstream/master
 ```
+
+Development Environment with Docker
+===================================
+
+* build
+
+```sh
+docker-compose build
+```
+
+
+Running Tests
+=============
+
+```sh
+docker-compose run antioch-tests
+```
