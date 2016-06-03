@@ -11,3 +11,8 @@ services:
     extends:
       service: antioch
     command: python -m antioch.uploader
+
+  antioch-tests:
+    extends:
+      service: antioch
+    command: tox
