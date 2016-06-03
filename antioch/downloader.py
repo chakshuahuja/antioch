@@ -13,17 +13,7 @@ from pytube import YouTube
 
 from antioch.core import config
 
-
-logger = logging.getLogger(__name__)
-
-console = logging.StreamHandler()
-console.setFormatter(logging.Formatter(
-    fmt='%(asctime)s %(levelname)-5s %(name)-40s: %(message)s',
-    datefmt='%Y-%m-%d %H:%M:%S',
-))
-logger.addHandler(console)
-logger.setLevel(logging.DEBUG)
-logger.propagate = False
+logger = logging.getLogger('antioch.downloader')
 
 
 def gen_filename(path, extension='movie'):
@@ -81,7 +71,15 @@ def videos_by_container(path):
     return process_files
 
 
-def download_youtube(url, timeout, chunk_size=config.DEFAULT_CHUNKSIZE):
+def download_youtube(url, timeout=0, chunk_size=config.DEFAULT_CHUNKSIZE):
+
+    def _cleanup_filename(path):
+        # removes the container type from the movie file
+        # filename, placed automatically by pytube module.
+        # this is an ``on_finish`` callback method from Video.download(..)
+        pre, ext = os.path.splitext(path)
+        os.rename(path, pre)
+
     def _sort_by_quality(v_list):
         # give better codecs a higher score than worse ones,
         # so that in resolution ties, the better codec is picked.
@@ -95,6 +93,13 @@ def download_youtube(url, timeout, chunk_size=config.DEFAULT_CHUNKSIZE):
             score = int(v.resolution.strip('pP')) * boost.get(v.extension.lower(), 0.9) + int(v.audio_bitrate)
             video_scores[score] = v
         return video_scores
+
+    url = url.get('url', None)
+
+    if not url:
+        return None
+
+    logger.info('downloading (youtube) video: ' + url)
 
     try:
         # get our Youtube Video instance given a url
@@ -111,7 +116,7 @@ def download_youtube(url, timeout, chunk_size=config.DEFAULT_CHUNKSIZE):
 
         # download that shit
         video = yt.get(highest_quality.extension, highest_quality.resolution, profile=highest_quality.profile)
-        video.download(path, chunk_size=chunk_size)
+        video.download(path, chunk_size=chunk_size, on_finish=_cleanup_filename)
 
     except Exception as e:
         # something went wrong...
@@ -124,7 +129,7 @@ def download_youtube(url, timeout, chunk_size=config.DEFAULT_CHUNKSIZE):
         return True if os.path.exists(fullpath) else None
 
 
-def download_other(obj, timeout, chunk_size=config.DEFAULT_CHUNKSIZE):
+def download_other(obj, timeout=0, chunk_size=config.DEFAULT_CHUNKSIZE):
     url = obj.get('url', None)
     if url is None:
         return None
@@ -196,7 +201,7 @@ def download_videos(vid_type: str, video_list: dict):
 
                 # preserve the original data filename
                 data.setdefault('original_file', original_json)
-
+    #videos = videos_by_container(config.READ_FROM_DIRECTORY)
                 # keep track of the last time we attempted to
                 # download the video file...this is useful if
                 # the JSON file got put in the `error` queue and it
