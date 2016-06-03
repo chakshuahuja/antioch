@@ -7,6 +7,14 @@ services:
     volumes:
       - .:/app
 
+  antioch-downloader:
+    extends:
+      service: antioch
+    environment:
+      READ_FROM_DIRECTORY: /app/data
+      DROP_FOLDER_LOCATION: /app/data_drop
+    command: python -m antioch.downloader
+
   antioch-uploader:
     extends:
       service: antioch
