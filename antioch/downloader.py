@@ -10,6 +10,7 @@ from typing import Dict
 
 import requests
 from requests import exceptions as RequestErrors
+from pytube import YouTube
 
 logger = logging.getLogger(__name__)
 
@@ -35,12 +36,15 @@ DEFAULT_FOLDERS = (
     ERROR_FOLDER_LOCATION
 )
 
+def gen_filename(path, extension='movie'):
+    return os.path.join(path, '%s.%s' % (uuid.uuid4().hex, extension))
+
 def find_json_files(path):
     logger.info('find all json files at path: ' + path)
     def _verify_json(f):
         return f.lower().endswith('json')
     return files_in_path(path, _verify_json)
-
+from pytube import YouTube
 
 def files_in_path(path, filter_fn=None):
     logger.info('find all files at path: ' + path)
@@ -91,8 +95,21 @@ def videos_by_container(path):
 
 
 def download_youtube(url, timeout, chunk_size=DEFAULT_CHUNKSIZE):
-    pass
+    try:
+        yt = YouTube(url)
 
+        video_formats = yt.get_videos()
+
+        yt.set_filename(gen_filename(DROP_FOLDER_LOCATION))
+
+        print
+
+    except Exception as e:
+        logger.error(e)
+        return None
+
+    else:
+        pass
 
 def download_other(obj, timeout, chunk_size=DEFAULT_CHUNKSIZE):
     url = obj.get('url', None)
@@ -109,7 +126,7 @@ def download_other(obj, timeout, chunk_size=DEFAULT_CHUNKSIZE):
         return None
 
     else:
-        filename = os.path.join(DROP_FOLDER_LOCATION, uuid.uuid4().hex + '.movie')
+        filename = gen_filename(DROP_FOLDER_LOCATION, 'movie')
         with open(filename, 'wb') as out_file:
             for chunk in response.iter_content(chunk_size=chunk_size):
                 out_file.write(chunk)
@@ -203,17 +220,19 @@ def download_videos(vid_type: str, video_list: dict) -> Dict[str, list]:
     return return_status
 
 
-def main():
-    for folder in DEFAULT_FOLDERS:
-        if not os.path.exists(folder):
-            logger.info('creating folder: ' + folder)
-            os.makedirs(folder)
+download_youtube('https://www.youtube.com/watch?v=3pGkgnkqJRQ', 0)
 
-    videos = videos_by_container(READ_FROM_DIRECTORY)
-    # (key, value) for items
-    for vid_type, items in videos.items():
-        download_videos(vid_type, items)
-
-
-if __name__ == '__main__':
-    main()
+# def main():
+#     for folder in DEFAULT_FOLDERS:
+#         if not os.path.exists(folder):
+#             logger.info('creating folder: ' + folder)
+#             os.makedirs(folder)
+#
+#     videos = videos_by_container(READ_FROM_DIRECTORY)
+#     # (key, value) for items
+#     for vid_type, items in videos.items():
+#         download_videos(vid_type, items)
+#
+#
+# if __name__ == '__main__':
+#     main()
