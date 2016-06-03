@@ -36,20 +36,17 @@ def videos_by_container(path):
     logger.info('found %d files' % len(all_files))
 
     for fname in all_files:
-        print(fname)
         if os.path.basename(fname) == 'category.json':
             continue
 
         with open(fname, 'r') as ins_file:
             try:
                 d = json.loads(ins_file.read())
-                print('loading')
             except Exception as e:
                 error_files[fname] = str(e)
                 continue
 
         videos = d.get('videos', list())
-        print(videos)
         types = list()
 
         for video in videos:
