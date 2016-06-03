@@ -7,7 +7,7 @@ services:
     volumes:
       - .:/app
 
-    antioch-uploader:
-      extends:
-        service: antioch
-      command: python -m antioch.uploader
+  antioch-uploader:
+    extends:
+      service: antioch
+    command: python -m antioch.uploader
