@@ -1,7 +1,11 @@
 import os
+import logging
 
 REQ_TIMEOUT = (3, 10)
 REMOVE_JSON_ON_SUCCESS = True
+
+DEFAULT_LOG_LEVEL = logging.DEBUG
+DEFAULT_LOG_LOCATION = os.path.join('/tmp', 'org.pytube.antioch.log')
 DEFAULT_CHUNKSIZE = 16384 # 16 * 1kB
 DEFAULT_THREAD_COUNT = 2
 
