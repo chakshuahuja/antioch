@@ -4,6 +4,7 @@ import uuid
 import logging
 import datetime
 import glob
+from urllib.parse import urlparse
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import requests
@@ -55,6 +56,16 @@ def videos_by_container(path):
         videos = d.get('videos', list())
         types = list()
 
+        # fixes the case when there are no videos: [{..}, ..] defined
+        # and attempts to sort the download by domain of ``source_url`` instead.
+        if not videos or len(videos) == 0:
+            url = d.get('source_url', None)
+            if not url:
+                continue
+            pieces = urlparse(url)
+            domain = pieces.hostname.split('.')[-2].lower() # cdn.web01.us.youtube.com -> youtube
+            logger.error('need custom downloader for: ' + domain)
+
         for video in videos:
             vid_type = video.get('type', None)
             if vid_type is None:
@@ -66,6 +77,7 @@ def videos_by_container(path):
     if error_files:
         for f in error_files:
             logger.error('Error with file: ' + f)
+
     return process_files
 
 
@@ -222,7 +234,10 @@ def main():
             logger.info('creating folder: ' + folder)
             os.makedirs(folder)
 
-    videos = videos_by_container(config.READ_FROM_DIRECTORY)
+    #videos = videos_by_container(config.READ_FROM_DIRECTORY)
+
+    videos = videos_by_container(r'/home/blake/code/pyvideo/pyvideo-data/data/')
+
     # (key, value) for items
     for vid_type, items in videos.items():
         download_videos(vid_type, items)
