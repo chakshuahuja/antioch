@@ -63,9 +63,22 @@ def videos_by_container(path):
     return process_files
 
 
-# pylint: disable=arguments-differ
-def download_youtube(url, timeout, chunk_size=config.DEFAULT_CHUNKSIZE):
-    pass
+def download_youtube(url, timeout, chunk_size=DEFAULT_CHUNKSIZE):
+    try:
+        yt = YouTube(url)
+
+        video_formats = yt.get_videos()
+
+        yt.set_filename(gen_filename(DROP_FOLDER_LOCATION))
+
+        print
+
+    except Exception as e:
+        logger.error(e)
+        return None
+
+    else:
+        pass
 
 
 def download_other(obj, timeout, chunk_size=config.DEFAULT_CHUNKSIZE):
