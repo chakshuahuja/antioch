@@ -4,16 +4,26 @@ import uuid
 import logging
 import datetime
 import glob
+import time
 from urllib.parse import urlparse
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import requests
-from requests import exceptions as RequestErrors
 from pytube import YouTube
+from requests import exceptions as RequestErrors
+from watchdog.observers import Observer
+from watchdog.events import RegexMatchingEventHandler
 
 from antioch.core import config
 
 logger = logging.getLogger('antioch.downloader')
+
+
+class JsonFileHandler(RegexMatchingEventHandler):
+    def on_created(self, event):
+        logger.info('event handled ' + str(event))
+        folder, _ = os.path.split(event.src_path)
+        process_existing(folder)
 
 
 def gen_filename(path, extension='movie'):
@@ -21,7 +31,7 @@ def gen_filename(path, extension='movie'):
 
 
 def find_files_by_extension(path, extension='json'):
-    logger.info('find all json files at path: ' + path)
+    logger.info('find all %s files at path: %s' % (extension, path))
     return glob.glob(os.path.join(path, '**/**/*.{}'.format(extension)))
 
 
@@ -201,7 +211,7 @@ def download_videos(vid_type: str, video_list: dict):
 
                 # preserve the original data filename
                 data.setdefault('original_file', original_json)
-    #videos = videos_by_container(config.READ_FROM_DIRECTORY)
+
                 # keep track of the last time we attempted to
                 # download the video file...this is useful if
                 # the JSON file got put in the `error` queue and it
@@ -217,7 +227,7 @@ def download_videos(vid_type: str, video_list: dict):
                 if not was_error:
                     movie_fstat = os.stat(movie_filename)
                     # successfully downloaded the movie file? save its filesize
-                    data.setdefault('movie_file', movie_filename)
+                    data.setdefault('movie_file', os.path.basename(movie_filename))
                     data.setdefault('filesize', movie_fstat.st_size)
                 else:
                     # otherwise, we don't know the time
@@ -233,19 +243,39 @@ def download_videos(vid_type: str, video_list: dict):
     return return_status
 
 
+def process_existing(path):
+    logger.info('processing path ' + path)
+    videos = videos_by_container(path)
+    # (key, value) for items
+    for vid_type, items in videos.items():
+        download_videos(vid_type, items)
+
+
 def main():
     for folder in config.DEFAULT_FOLDERS:
         if not os.path.exists(folder):
             logger.info('creating folder: ' + folder)
             os.makedirs(folder)
 
-    #videos = videos_by_container(config.READ_FROM_DIRECTORY)
+    path = config.READ_FROM_DIRECTORY
 
-    videos = videos_by_container(r'/home/blake/code/pyvideo/pyvideo-data/data/')
+    process_existing(path)
 
-    # (key, value) for items
-    for vid_type, items in videos.items():
-        download_videos(vid_type, items)
+
+    observer = Observer()
+    observer.schedule(
+        JsonFileHandler([r'.*\.json'], case_sensitive=False),
+        path,
+        recursive=True
+    )
+    observer.start()
+
+    try:
+        while True:
+            time.sleep(1)
+    except KeyboardInterrupt:
+        observer.stop()
+    observer.join()
 
 
 if __name__ == '__main__':
