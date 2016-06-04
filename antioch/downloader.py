@@ -227,7 +227,7 @@ def download_videos(vid_type: str, video_list: dict):
                 if not was_error:
                     movie_fstat = os.stat(movie_filename)
                     # successfully downloaded the movie file? save its filesize
-                    data.setdefault('movie_file', movie_filename)
+                    data.setdefault('movie_file', os.path.basename(movie_filename))
                     data.setdefault('filesize', movie_fstat.st_size)
                 else:
                     # otherwise, we don't know the time
@@ -260,6 +260,7 @@ def main():
     path = config.READ_FROM_DIRECTORY
 
     process_existing(path)
+
 
     observer = Observer()
     observer.schedule(

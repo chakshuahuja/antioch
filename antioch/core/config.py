@@ -3,10 +3,14 @@ import logging
 
 REQ_TIMEOUT = (3, 10)
 REMOVE_JSON_ON_SUCCESS = True
+REMOVE_AFTER_ARCHIVED = True
+
+ARCHIVE_THRESHOLD_BYTES = 1 * 1024 * 1024 * 1024  # 1 GB
+ARCHIVE_FILENAME = 'pytube-video-archive-%s-%s.zip'
 
 DEFAULT_LOG_LEVEL = logging.DEBUG
 DEFAULT_LOG_LOCATION = os.path.join('/tmp', 'org.pytube.antioch.log')
-DEFAULT_CHUNKSIZE = 16384  # 16 * 1kB
+DEFAULT_CHUNKSIZE = 16384  # 16kB
 DEFAULT_THREAD_COUNT = 2
 
 READ_FROM_DIRECTORY = os.getenv('READ_FROM_DIRECTORY', '.')
